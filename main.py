@@ -7,6 +7,7 @@ from torchvision import transforms, models
 from sklearn.model_selection import train_test_split
 from model import MultimodalDataset, MultimodalModel  # 假设模型和数据集类已经在 model.py 中定义
 from PIL import Image  # 需要导入PIL库用于处理图像
+import matplotlib.pyplot as plt  # 导入matplotlib用于绘图
 
 # 参数设置
 BATCH_SIZE = 32
@@ -16,15 +17,13 @@ MAX_LENGTH = 128
 NUM_CLASSES = 3
 
 # 数据和模型路径
-# DATA_DIR = r"e:\Learning_material\junior\AI\5_FinalLab\dataset"
 DATA_DIR = "/kaggle/working/dataset"
-
 TRAIN_FILE = os.path.join(DATA_DIR, "train.txt")
 TEST_FILE = os.path.join(DATA_DIR, "test_without_label.txt")
 IMG_DIR = os.path.join(DATA_DIR, "data")
 
 # 设置BERT和图像预处理
-tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", clean_up_tokenization_spaces=True)
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -62,6 +61,9 @@ def train(model, train_loader, val_loader):
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     
     best_val_accuracy = 0
+    train_losses = []
+    val_accuracies = []
+    
     for epoch in range(EPOCHS):
         model.train()
         running_loss = 0.0
@@ -75,15 +77,21 @@ def train(model, train_loader, val_loader):
             optimizer.step()
             running_loss += loss.item()
         
-        print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {running_loss/len(train_loader)}")
+        avg_train_loss = running_loss / len(train_loader)
+        train_losses.append(avg_train_loss)
+        print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_train_loss}")
         
         # 验证集评估
         val_accuracy = evaluate(model, val_loader)
+        val_accuracies.append(val_accuracy)
         print(f"Validation Accuracy: {val_accuracy}%")
         
         if val_accuracy > best_val_accuracy:
             best_val_accuracy = val_accuracy
             torch.save(model.state_dict(), "best_model.pth")
+    
+    # 绘制训练损失和验证准确率图表并保存
+    plot_metrics(train_losses, val_accuracies)
 
 # 验证过程
 def evaluate(model, val_loader):
@@ -100,6 +108,30 @@ def evaluate(model, val_loader):
     
     return 100 * correct / total
 
+# 绘制训练损失和验证准确率的图表并保存为文件
+def plot_metrics(train_losses, val_accuracies):
+    # 绘制训练损失
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 2, 1)
+    plt.plot(train_losses, label="Training Loss")
+    plt.title("Training Loss vs. Epochs")
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.legend()
+
+    # 绘制验证准确率
+    plt.subplot(1, 2, 2)
+    plt.plot(val_accuracies, label="Validation Accuracy", color='orange')
+    plt.title("Validation Accuracy vs. Epochs")
+    plt.xlabel("Epochs")
+    plt.ylabel("Accuracy (%)")
+    plt.legend()
+
+    # 保存图表为图片文件
+    plt.tight_layout()
+    plt.savefig('training_metrics.png')  # 保存图表为PNG文件
+    print("Training metrics plot saved as 'training_metrics.png'")
+
 # 预测过程
 def predict(model, test_file, output_file):
     model.load_state_dict(torch.load("best_model.pth"))
@@ -112,11 +144,11 @@ def predict(model, test_file, output_file):
         lines = f.readlines()
         
         for line in tqdm(lines, desc="Predicting", unit="sample"):
-            guid = line.strip().split(",")[0]
-            text = open(f"{DATA_DIR}/{guid}.txt", "r").read()
+            guid = line.strip().split(",")[0]  # 假设使用逗号分隔
+            text = open(f"{DATA_DIR}/{guid}.txt", "r", encoding="ISO-8859-1").read()  # 加上 encoding 参数
             text_encoding = tokenizer(text, truncation=True, padding="max_length", max_length=MAX_LENGTH, return_tensors="pt")
             
-            img = Image.open(f"{DATA_DIR}/images/{guid}.jpg")
+            img = Image.open(f"{DATA_DIR}/data/{guid}.jpg")  # 确保图像路径正确
             img = transform(img).unsqueeze(0)
             
             output = model(text_encoding.input_ids, text_encoding.attention_mask, img)

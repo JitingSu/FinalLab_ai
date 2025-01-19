@@ -112,14 +112,29 @@ class MultimodalModel(nn.Module):
         return output
 
 # 预训练模型加载函数
+from torchvision.models import ResNet50_Weights
+
 def get_model(num_classes):
     # 加载预训练的BERT模型
     text_model = BertModel.from_pretrained("bert-base-uncased")
     
-    # 加载预训练的ResNet50模型
-    img_model = models.resnet50(pretrained=True)
+    # 加载预训练的ResNet50模型（使用weights代替pretrained）
+    img_model = models.resnet50(weights=ResNet50_Weights.DEFAULT)  # 或使用 ResNet50_Weights.IMAGENET1K_V1
+    
     img_model.fc = nn.Identity()  # 去掉ResNet最后的分类层
     
     # 创建多模态模型
     model = MultimodalModel(text_model, img_model, num_classes)
     return model
+
+# def get_model(num_classes):
+#     # 加载预训练的BERT模型
+#     text_model = BertModel.from_pretrained("bert-base-uncased")
+    
+#     # 加载预训练的ResNet50模型
+#     img_model = models.resnet50(pretrained=True)
+#     img_model.fc = nn.Identity()  # 去掉ResNet最后的分类层
+    
+#     # 创建多模态模型
+#     model = MultimodalModel(text_model, img_model, num_classes)
+#     return model
