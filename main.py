@@ -17,7 +17,7 @@ NUM_CLASSES = 3
 
 # 数据和模型路径
 # DATA_DIR = r"e:\Learning_material\junior\AI\5_FinalLab\dataset"
-DATA_DIR = "/kaggle/input/project5/dataset"
+DATA_DIR = "/kaggle/working/dataset"
 
 TRAIN_FILE = os.path.join(DATA_DIR, "train.txt")
 TEST_FILE = os.path.join(DATA_DIR, "test_without_label.txt")
