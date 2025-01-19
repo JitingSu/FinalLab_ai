@@ -112,7 +112,7 @@ def predict(model, test_file, output_file):
         lines = f.readlines()
         
         for line in tqdm(lines, desc="Predicting", unit="sample"):
-            guid = line.strip().split("\t")[0]
+            guid = line.strip().split(",")[0]
             text = open(f"{DATA_DIR}/{guid}.txt", "r").read()
             text_encoding = tokenizer(text, truncation=True, padding="max_length", max_length=MAX_LENGTH, return_tensors="pt")
             

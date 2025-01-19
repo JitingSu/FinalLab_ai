@@ -10,7 +10,7 @@ class MultimodalDataset(Dataset):
     def __init__(self, data, img_dir, tokenizer, transform, max_length, data_dir):
         """
         初始化数据集类
-        :param data: 包含文本和标签的列表，格式为 ["guid1\tlabel1", "guid2\tlabel2", ...]
+        :param data: 包含文本和标签的列表，格式为 ["guid1,label1", "guid2,label2", ...]
         :param img_dir: 图片存放的文件夹路径
         :param tokenizer: BERT分词器
         :param transform: 图像的预处理变换
@@ -31,7 +31,7 @@ class MultimodalDataset(Dataset):
         line = self.data[idx]
         
         try:
-            # 尝试拆分每行数据
+            # 尝试拆分每行数据（用逗号分隔）
             guid, label = line.strip().split(",")
         except ValueError:
             # 如果拆分失败，输出警告并跳过该行
@@ -40,7 +40,8 @@ class MultimodalDataset(Dataset):
 
         # 处理文本数据
         try:
-            with open(f"{self.data_dir}/{guid}.txt", "r") as file:
+            # 读取文本文件并使用 ISO-8859-1 编码
+            with open(f"{self.data_dir}/{guid}.txt", "r", encoding="ISO-8859-1") as file:
                 text = file.read()
         except FileNotFoundError:
             print(f"Text file {guid}.txt not found. Skipping this sample.")
