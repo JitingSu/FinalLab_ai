@@ -22,7 +22,7 @@ class MultimodalDataset(Dataset):
         self.tokenizer = tokenizer
         self.transform = transform
         self.max_length = max_length
-        self.data_dir = data_dir  # 文本文件目录
+        self.data_dir = data_dir 
 
     def __len__(self):
         return len(self.data)
@@ -36,16 +36,16 @@ class MultimodalDataset(Dataset):
         except ValueError:
             # 如果拆分失败，输出警告并跳过该行
             print(f"Skipping invalid line: {line}")
-            return None  # 或者返回一个默认值
+            return None 
 
         # 处理文本数据
         try:
-            # 读取文本文件并使用 ISO-8859-1 编码
+            # 使用 ISO-8859-1 编码
             with open(f"{self.data_dir}/{guid}.txt", "r", encoding="ISO-8859-1") as file:
                 text = file.read()
         except FileNotFoundError:
             print(f"Text file {guid}.txt not found. Skipping this sample.")
-            return None  # 跳过找不到文本文件的样本
+            return None  
 
         encoding = self.tokenizer(
             text, truncation=True, padding="max_length", max_length=self.max_length, return_tensors="pt"
@@ -56,16 +56,16 @@ class MultimodalDataset(Dataset):
         # 处理图像数据
         try:
             img = Image.open(f"{self.img_dir}/{guid}.jpg")
-            img = self.transform(img)  # 对图像进行预处理
+            img = self.transform(img)  
         except FileNotFoundError:
             print(f"Image file {guid}.jpg not found. Skipping this sample.")
-            return None  # 跳过找不到图像文件的样本
+            return None  
 
         # 将标签转换为数字
         label_map = {'positive': 0, 'neutral': 1, 'negative': 2}
         if label not in label_map:
             print(f"Invalid label {label} for guid {guid}. Skipping this sample.")
-            return None  # 跳过标签不在映射中的样本
+            return None  
 
         label = label_map[label]
 
@@ -111,21 +111,21 @@ class MultimodalModel(nn.Module):
         output = self.fc(combined_features)
         return output
 
-# 预训练模型加载函数
-from torchvision.models import ResNet50_Weights
+# # 预训练模型加载函数
+# from torchvision.models import ResNet50_Weights
 
-def get_model(num_classes):
-    # 加载预训练的BERT模型
-    text_model = BertModel.from_pretrained("bert-base-uncased")
+# def get_model(num_classes):
+#     # 加载预训练的BERT模型
+#     text_model = BertModel.from_pretrained("bert-base-uncased")
     
-    # 加载预训练的ResNet50模型（使用weights代替pretrained）
-    img_model = models.resnet50(weights=ResNet50_Weights.DEFAULT)  # 或使用 ResNet50_Weights.IMAGENET1K_V1
+#     # 加载预训练的ResNet50模型（使用weights代替pretrained）
+#     img_model = models.resnet50(weights=ResNet50_Weights.DEFAULT)  # 或使用 ResNet50_Weights.IMAGENET1K_V1
     
-    img_model.fc = nn.Identity()  # 去掉ResNet最后的分类层
+#     img_model.fc = nn.Identity()  # 去掉ResNet最后的分类层
     
-    # 创建多模态模型
-    model = MultimodalModel(text_model, img_model, num_classes)
-    return model
+#     # 创建多模态模型
+#     model = MultimodalModel(text_model, img_model, num_classes)
+#     return model
 
 # def get_model(num_classes):
 #     # 加载预训练的BERT模型
