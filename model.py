@@ -114,8 +114,7 @@ class MultimodalModelvs(nn.Module):
         self.img_model = img_model
         
         # 固定的多模态融合层，输入维度 = 768 (文本特征) + 2048 (图像特征)
-        # 注意：我们假设文本和图像特征是 768 和 2048 维
-        self.fc = nn.Linear(768 + 2048, num_classes)  # 多模态融合层
+        self.fc = nn.Linear(768 + 2048, num_classes)  # 默认拼接后的维度（文本+图像）
 
     def forward(self, input_ids=None, attention_mask=None, img=None, use_text=True, use_image=True):
         text_features = None

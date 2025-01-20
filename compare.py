@@ -140,6 +140,7 @@ def evaluate(model, val_loader, device, use_text=True, use_image=True):
     
     return 100 * correct / total
 
+
 def predict(model, test_file, output_file, device):
     model.load_state_dict(torch.load("best_model.pth", weights_only=True))
     model.eval()
@@ -193,13 +194,9 @@ def main():
     model = initialize_model()
     model = model.to(device)  # 将模型转移到设备
     
-    # 训练仅使用文本的模型
+    # 训练模型
     train(model, train_loader, val_loader, device, use_text=True, use_image=False)
-
-    # 训练仅使用图像的模型
     train(model, train_loader, val_loader, device, use_text=False, use_image=True)
-
-    # 训练使用多模态的模型
     train(model, train_loader, val_loader, device, use_text=True, use_image=True)
 
     # 预测
