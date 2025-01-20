@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 from model import MultimodalDataset, MultimodalModel  
 from PIL import Image  
 import matplotlib.pyplot as plt  
+from torchvision.models import ResNet50_Weights
 
 # 参数设置
 BATCH_SIZE = 32
@@ -58,7 +59,7 @@ def initialize_model():
     text_model = BertModel.from_pretrained("bert-base-uncased")
     
     # 加载预训练的ResNet-50模型
-    img_model = models.resnet50(pretrained=True)
+    img_model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
     img_model.fc = torch.nn.Identity()  
     
     # 创建一个MultimodalModel实例，将文本模型和图像模型作为参数传递给它
@@ -123,8 +124,6 @@ def train(model, train_loader, val_loader, device):
     
     # 绘制训练损失和验证准确率图表
     plot_metrics(train_losses, val_accuracies)
-
-
 
 def evaluate(model, val_loader, device):
     """
@@ -242,8 +241,8 @@ def predict(model, test_file, output_file, device):
     with open(output_file, "w") as f:
         f.write("guid,tag\n")  # 写入标题
         for guid, label in zip(open(test_file, 'r').readlines()[1:], predictions):  # 跳过第一行标题
-            f.write(f"{guid.strip().split(',')[0]}\t{['positive', 'neutral', 'negative'][label]}\n")
-
+            f.write(f"{guid.strip().split(',')[0]},{['positive', 'neutral', 'negative'][label]}\n")  # 使用逗号分隔
+    
     print(f"Prediction completed and saved to {output_file}")
 
 
