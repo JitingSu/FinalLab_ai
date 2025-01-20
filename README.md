@@ -1,17 +1,10 @@
-把自己的代码上传到github，将该github地址添加到报告中第一页。要求有完整详细的readme。
-执行你代码所需要的环境。写在一个requirements.txt中。
-你的代码文件结构。
-执行你代码的完整流程。
-你这篇代码参考哪些库实现的。
-可参考https://github.com/RecklessRonan/GloGNN/blob/master/readme.md
-
 # FinalLab_ai
 
-This is the official repository of 当代人工智能大作业
+刘子玉  当代人工智能大作业
 
 ## Setup
 
-This implemetation is based on Python3. To run the code, you need the following dependencies:
+此实验实现基于Python3.11.3。要运行代码，还需要安装以下库：还没修改
 
 - torch==1.10.0
 
@@ -29,99 +22,67 @@ This implemetation is based on Python3. To run the code, you need the following 
 
 - pandas==1.1.5
 
-You can simply run 
+也可以运行以下命令进行依赖安装：
 
 ```python
 pip install -r requirements.txt
 ```
 
 ## Repository structure
-We select some important files for detailed description.
+本次实验文件夹结构组成如下：
 
 ```python
-|-- large-scale # experiments for 6 large-scale datasets
-    |-- data/ # some large-scale datasets
-    |-- dataset/  # the remaining large-scale datasets
-    |-- experiments/  # all run shs
-    |-- main.py # the main code
-    |-- main_z.py # obtains coefficient matrix z 
-    |-- models.py # includes all model implementations
-|-- paper-plots # all experimental plots in our paper
-|-- small-scale # experiments for 9 small-scale datasets
-    |-- data/ # 3 old datasets, including cora, citeseer, and pubmed
-    |-- new-data/ # 6 new datasets, including texas, wisconsin, cornell, actor, squirrel, and chameleon
-    |-- splits/ # splits for 6 new datasets
-    |-- sh/ # all run shs
-    |-- main.py  # the main code
-    |-- main_z.py  # obtains coefficient matrix z
-    |-- main_h.py # obtains final layer embedding h
+|-- result.txt    		# 预测文件
+|-- main.py  		    # 主程序入口
+|-- model.py  		    # 模型构建与数据预处理模块
+|-- draft.ipynb			# 在kaggle运行代码的notebook过程
+|-- requirements.txt
+|-- README.md  
+|-- best_model.pth		# 训练保存的最佳模型
 ```
 
-## Run pipeline for big-scale datasets
-1. Entering the large-scale directory and download 6 big-scale datasets from the repository of [LINKX](https://github.com/CUAI/Non-Homophily-Large-Scale). Notice, you should rename the datasets and place them in the right directory.
+## Run 
+1. 确保本地保存有本次实验的数据集，数据集结构如下：
+
 ```python
-cd large-scale
+|-- train.txt    		  # 数据的guid和对应的情感标签
+|-- test_without_label.py # 数据的guid和空的情感标签
+|-- data   			      # 包括所有的训练文本和图片
+    |-- 1.jpg    		
+    |-- 1.txt
+    |-- ...				  # 以此类推
+
 ```
 
-2. You can run any models implemented in 'models.py'. For examples, you can run our model on 'genius' dataset by the script:
-```python
-python main.py --dataset genius --sub_dataset None --method mlpnorm
-```
-And you can run other models, such as 
-```python
-python main.py --dataset genius --sub_dataset None --method acmgcn
-```
-For more experiments running details, you can ref the running sh in the 'experiments/' directory.
+2. 在 `main.py` 中的第 22 行，将 `DATA_DIR` 变量中的路径修改为自己电脑中的数据集路径：
 
-3. You can reproduce the experimental results of our method by running the scripts:
 ```python
-bash run_glognn_sota_reproduce_big.sh
-bash run_glognn++_sota_reproduce_big.sh
+DATA_DIR = "/kaggle/working/dataset"
 ```
 
+3. 在终端运行以下命令进行模型的训练和测试，建议在 GPU 环境下运行，通常需要大约 10 分钟时间，若使用 CPU，则可能需要3小时的时间：
 
-
-## Run pipeline for small-scale datasets
-1. Entering the large-scale directory and we provide the original datasets with their splits.
-```python
-cd small-scale
+```powershell
+python main.py
 ```
 
-2. You can run our model like the script in the below:
-```python
-python main.py --no-cuda --model mlp_norm --dataset chameleon --split 0
-```
-Notice, we run all small-scale datasets on CPUs.
-For more experiments running details, you can ref the running sh in the 'sh/' directory.
+4. 如果想跳过训练步骤，直接使用已经训练好的模型 `best_model.pth` 进行测试，可以将主函数中的这一行代码注释掉：
 
-
-3. You can reproduce the experimental results of our method by running the scripts:
 ```python
-bash run_glognn_sota_reproduce_small.sh
-bash run_glognn++_sota_reproduce_small.sh
+train(model, train_loader, val_loader, device)
+
+# 以下代码已包含在predict函数中
+# model.load_state_dict(torch.load("best_model.pth"))
+# model.eval()
 ```
 
 
 ## Attribution
 
-Parts of this code are based on the following repositories:
+Parts of this code are based on the following repositories:还没修改
 
 - [LINKX](https://github.com/CUAI/Non-Homophily-Large-Scale)
 
 - [PYGCN](https://github.com/tkipf/pygcn)
 
 - [WRGAT](https://github.com/susheels/gnns-and-local-assortativity/tree/main/struc_sim)
-
-
-## Citation
-
-If you find this code working for you, please cite:
-
-```python
-@article{li2022finding,
-  title={Finding Global Homophily in Graph Neural Networks When Meeting Heterophily},
-  author={Li, Xiang and Zhu, Renyu and Cheng, Yao and Shan, Caihua and Luo, Siqiang and Li, Dongsheng and Qian, Weining},
-  journal={arXiv preprint arXiv:2205.07308},
-  year={2022}
-}
-```
