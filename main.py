@@ -7,7 +7,6 @@ from torchvision import transforms, models
 from sklearn.model_selection import train_test_split
 from model import MultimodalDataset, MultimodalModel  
 from PIL import Image  
-import matplotlib.pyplot as plt  
 from torchvision.models import ResNet50_Weights
 
 # 参数设置
@@ -22,6 +21,18 @@ DATA_DIR = "/kaggle/working/dataset"
 TRAIN_FILE = os.path.join(DATA_DIR, "train.txt")
 TEST_FILE = os.path.join(DATA_DIR, "test_without_label.txt")
 IMG_DIR = os.path.join(DATA_DIR, "data")
+
+import wandb
+
+wandb.init(
+    project="FinalLab",  # 设置为你在wandb网站上创建的项目名称
+    config={  # 配置你的超参数
+        "learning_rate": LEARNING_RATE,
+        "batch_size": BATCH_SIZE,
+        "epochs": EPOCHS,
+        "model": "BERT + ResNet50"
+    }
+)
 
 # 设置BERT分词器和图像预处理
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", clean_up_tokenization_spaces=True)
@@ -86,11 +97,14 @@ def train(model, train_loader, val_loader, device):
     
     best_val_accuracy = 0
     train_losses = []
+    train_accuracies = []
     val_accuracies = []
     
     for epoch in range(EPOCHS):
         model.train()
         running_loss = 0.0
+        correct_train = 0
+        total_train = 0
         
         for input_ids, attention_mask, img, label in tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS} - Training", unit="batch"):
             # 将数据迁移到 GPU 或 CPU
@@ -108,22 +122,37 @@ def train(model, train_loader, val_loader, device):
             optimizer.step()
             # 累加损失
             running_loss += loss.item()
+            
+            # 计算训练准确率
+            _, predicted = torch.max(output, 1)
+            total_train += label.size(0)
+            correct_train += (predicted == label).sum().item()
         
         avg_train_loss = running_loss / len(train_loader)
+        avg_train_accuracy = 100 * correct_train / total_train
         train_losses.append(avg_train_loss)
-        print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_train_loss}")
+        train_accuracies.append(avg_train_accuracy)
+        
+        print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_train_loss}, Accuracy: {avg_train_accuracy}%")
+        
+        # 记录训练损失和准确率到wandb
+        wandb.log({"train_loss": avg_train_loss, "train_accuracy": avg_train_accuracy})
         
         # 验证集评估
         val_accuracy = evaluate(model, val_loader, device)  # 传递 device 给 evaluate 函数
         val_accuracies.append(val_accuracy)
         print(f"Validation Accuracy: {val_accuracy}%")
         
+        # 记录验证准确率到wandb
+        wandb.log({"val_accuracy": val_accuracy})
+
         if val_accuracy > best_val_accuracy:
             best_val_accuracy = val_accuracy
             torch.save(model.state_dict(), "best_model.pth")
     
-    # 绘制训练损失和验证准确率图表
-    plot_metrics(train_losses, val_accuracies)
+    # 完成wandb记录
+    wandb.finish()
+
 
 def evaluate(model, val_loader, device):
     """
@@ -161,28 +190,28 @@ def evaluate(model, val_loader, device):
 
 
 # 绘制训练损失和验证准确率的图表并保存为文件
-def plot_metrics(train_losses, val_accuracies):
-    # 绘制训练损失
-    plt.figure(figsize=(12, 6))
-    plt.subplot(1, 2, 1)
-    plt.plot(train_losses, label="Training Loss")
-    plt.title("Training Loss vs. Epochs")
-    plt.xlabel("Epochs")
-    plt.ylabel("Loss")
-    plt.legend()
+# def plot_metrics(train_losses, val_accuracies):
+#     # 绘制训练损失
+#     plt.figure(figsize=(12, 6))
+#     plt.subplot(1, 2, 1)
+#     plt.plot(train_losses, label="Training Loss")
+#     plt.title("Training Loss vs. Epochs")
+#     plt.xlabel("Epochs")
+#     plt.ylabel("Loss")
+#     plt.legend()
 
-    # 绘制验证准确率
-    plt.subplot(1, 2, 2)
-    plt.plot(val_accuracies, label="Validation Accuracy", color='orange')
-    plt.title("Validation Accuracy vs. Epochs")
-    plt.xlabel("Epochs")
-    plt.ylabel("Accuracy (%)")
-    plt.legend()
+#     # 绘制验证准确率
+#     plt.subplot(1, 2, 2)
+#     plt.plot(val_accuracies, label="Validation Accuracy", color='orange')
+#     plt.title("Validation Accuracy vs. Epochs")
+#     plt.xlabel("Epochs")
+#     plt.ylabel("Accuracy (%)")
+#     plt.legend()
 
-    # 保存图表为图片文件
-    plt.tight_layout()
-    plt.savefig('training_metrics.png')  # 保存图表为PNG文件
-    print("Training metrics plot saved as 'training_metrics.png'")
+#     # 保存图表为图片文件
+#     plt.tight_layout()
+#     plt.savefig('training_metrics.png')  # 保存图表为PNG文件
+#     print("Training metrics plot saved as 'training_metrics.png'")
 
 def predict(model, test_file, output_file, device):
     """
