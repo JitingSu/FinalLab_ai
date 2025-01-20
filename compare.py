@@ -63,7 +63,7 @@ def load_data():
 def initialize_model():
     text_model = BertModel.from_pretrained("bert-base-uncased")
     img_model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
-    img_model.fc = torch.nn.Identity()  
+    img_model.fc = torch.nn.Identity()  # Remove last fully connected layer
     model = MultimodalModelvs(text_model, img_model, NUM_CLASSES)
     return model
 
@@ -82,7 +82,7 @@ def train(model, train_loader, val_loader, device, use_text=True, use_image=True
     train_accuracies = []
     val_accuracies = []
     
-    # 早停
+    # 早停策略
     patience_counter = 0
     
     for epoch in range(EPOCHS):
@@ -112,15 +112,27 @@ def train(model, train_loader, val_loader, device, use_text=True, use_image=True
         train_losses.append(avg_train_loss)
         train_accuracies.append(avg_train_accuracy)
         
-        print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_train_loss}, Accuracy: {avg_train_accuracy}%")
+        print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_train_loss:.4f}, Accuracy: {avg_train_accuracy:.2f}%")
         
         # 验证集评估
         val_accuracy = evaluate(model, val_loader, device, use_text=use_text, use_image=use_image)
         val_accuracies.append(val_accuracy)
-        print(f"Validation Accuracy: {val_accuracy}%")
+        print(f"Validation Accuracy: {val_accuracy:.2f}%")
         
         # 学习率调度器
         scheduler.step()
+
+        # 早停判断
+        if val_accuracy > best_val_accuracy:
+            best_val_accuracy = val_accuracy
+            patience_counter = 0
+            # 保存最佳模型
+            torch.save(model.state_dict(), "best_model.pth")
+        else:
+            patience_counter += 1
+            if patience_counter >= PATIENCE:
+                print("Early stopping triggered!")
+                break
 
     wandb.finish()
 
@@ -140,9 +152,8 @@ def evaluate(model, val_loader, device, use_text=True, use_image=True):
     
     return 100 * correct / total
 
-
 def predict(model, test_file, output_file, device):
-    model.load_state_dict(torch.load("best_model.pth", weights_only=True))
+    model.load_state_dict(torch.load("best_model.pth", weights_only=True))  # 加载最佳模型
     model.eval()
     model = model.to(device)
     

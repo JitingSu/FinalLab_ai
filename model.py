@@ -113,8 +113,8 @@ class MultimodalModelvs(nn.Module):
         self.text_model = text_model
         self.img_model = img_model
         
-        # 定义默认的 fc 层，假设文本和图像拼接后的维度为 2816
-        self.fc = nn.Linear(768 + 2048, num_classes)  # 默认拼接后的维度（文本+图像）
+        # 定义融合后的 fc 层，假设拼接后的维度为 (768 + 2048)
+        self.fc = nn.Linear(768 + 2048, num_classes)  # 拼接文本和图像特征的输出
 
     def forward(self, input_ids=None, attention_mask=None, img=None, use_text=True, use_image=True):
         text_features = None
@@ -139,9 +139,6 @@ class MultimodalModelvs(nn.Module):
         else:
             raise ValueError("Both input modalities are None!")
 
-        # 根据 combined_features 的维度调整 fc 层的输入维度
-        input_dim = combined_features.size(1)  # 获取拼接后的特征维度
-        self.fc = nn.Linear(input_dim, 3)  # 动态调整 fc 层的输入维度
-
-        output = self.fc(combined_features)  # 使用动态调整的 fc 层进行输出
+        # 这里设置fc层为固定输入维度，不在每次forward中进行动态创建
+        output = self.fc(combined_features)
         return output
