@@ -189,7 +189,7 @@ def predict(model, test_file, output_file):
 
             # 读取文本文件，注意加上 encoding 参数
             try:
-                text = open(f"{DATA_DIR}/{guid}.txt", "r", encoding="ISO-8859-1").read()  
+                text = open(f"{DATA_DIR}/data/{guid}.txt", "r", encoding="ISO-8859-1").read()  
             except FileNotFoundError:
                 print(f"Text file {guid}.txt not found. Skipping this sample.")
                 continue
