@@ -12,7 +12,7 @@ import wandb
 
 # 参数设置
 BATCH_SIZE = 32
-EPOCHS = 30
+EPOCHS = 10
 LEARNING_RATE = 1e-5
 MAX_LENGTH = 128
 NUM_CLASSES = 3
