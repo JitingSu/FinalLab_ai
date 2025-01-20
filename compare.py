@@ -67,98 +67,9 @@ def initialize_model():
     model = MultimodalModelvs(text_model, img_model, NUM_CLASSES)
     return model
 
-# def train(model, train_loader, val_loader, device):
-#     model = model.to(device)
-    
-#     # 使用L2正则化（weight_decay）来防止过拟合
-#     criterion = torch.nn.CrossEntropyLoss()
-#     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-    
-#     # 使用学习率调度器，每10个epoch调整一次学习率
-#     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
-    
-#     best_val_accuracy = 0
-#     train_losses = []
-#     train_accuracies = []
-#     val_accuracies = []
-    
-#     # 早停
-#     patience_counter = 0
-    
-#     for epoch in range(EPOCHS):
-#         model.train()
-#         running_loss = 0.0
-#         correct_train = 0
-#         total_train = 0
-        
-#         for input_ids, attention_mask, img, label in tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS} - Training", unit="batch"):
-#             input_ids, attention_mask, img, label = input_ids.to(device), attention_mask.to(device), img.to(device), label.to(device)
-            
-#             optimizer.zero_grad()
-#             output = model(input_ids, attention_mask, img)
-#             loss = criterion(output, label)
-#             loss.backward()
-#             optimizer.step()
-#             running_loss += loss.item()
-            
-#             # 计算训练准确率
-#             _, predicted = torch.max(output, 1)
-#             total_train += label.size(0)
-#             correct_train += (predicted == label).sum().item()
-        
-#         avg_train_loss = running_loss / len(train_loader)
-#         avg_train_accuracy = 100 * correct_train / total_train
-#         train_losses.append(avg_train_loss)
-#         train_accuracies.append(avg_train_accuracy)
-        
-#         print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_train_loss}, Accuracy: {avg_train_accuracy}%")
-        
-#         # 记录训练损失和准确率到wandb
-#         wandb.log({"train/loss": avg_train_loss, "train/accuracy": avg_train_accuracy})
-        
-#         # 验证集评估
-#         val_accuracy = evaluate(model, val_loader, device)
-#         val_accuracies.append(val_accuracy)
-#         print(f"Validation Accuracy: {val_accuracy}%")
-        
-#         # 记录验证准确率到wandb
-#         wandb.log({"val/accuracy": val_accuracy})
-
-#         # # 早停判断
-#         # if val_accuracy > best_val_accuracy:
-#         #     best_val_accuracy = val_accuracy
-#         #     torch.save(model.state_dict(), "best_model.pth")
-#         #     patience_counter = 0
-#         # else:
-#         #     patience_counter += 1
-        
-#         # if patience_counter >= PATIENCE:
-#         #     print("Early stopping triggered, stopping training.")
-#         #     break
-        
-#         # 学习率调度器
-#         scheduler.step()
-
-#     wandb.finish()
-
-# def evaluate(model, val_loader, device):
-#     model.eval()
-#     correct = 0
-#     total = 0
-    
-#     with torch.no_grad():
-#         for input_ids, attention_mask, img, label in tqdm(val_loader, desc="Validation", unit="batch"):
-#             input_ids, attention_mask, img, label = input_ids.to(device), attention_mask.to(device), img.to(device), label.to(device)
-#             output = model(input_ids, attention_mask, img)
-#             _, predicted = torch.max(output, 1)
-#             total += label.size(0)
-#             correct += (predicted == label).sum().item()
-    
-#     return 100 * correct / total
-
 def train(model, train_loader, val_loader, device, use_text=True, use_image=True):
-    model = model.to(device)
-    
+    model = model.to(device)  # 将模型移到指定设备
+
     # 使用L2正则化（weight_decay）来防止过拟合
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
@@ -181,6 +92,7 @@ def train(model, train_loader, val_loader, device, use_text=True, use_image=True
         total_train = 0
         
         for input_ids, attention_mask, img, label in tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS} - Training", unit="batch"):
+            # 将数据移到相同设备
             input_ids, attention_mask, img, label = input_ids.to(device), attention_mask.to(device), img.to(device), label.to(device)
             
             optimizer.zero_grad()
@@ -219,6 +131,7 @@ def evaluate(model, val_loader, device, use_text=True, use_image=True):
     
     with torch.no_grad():
         for input_ids, attention_mask, img, label in tqdm(val_loader, desc="Validation", unit="batch"):
+            # 将数据移到相同设备
             input_ids, attention_mask, img, label = input_ids.to(device), attention_mask.to(device), img.to(device), label.to(device)
             output = model(input_ids, attention_mask, img, use_text=use_text, use_image=use_image)
             _, predicted = torch.max(output, 1)
@@ -226,6 +139,7 @@ def evaluate(model, val_loader, device, use_text=True, use_image=True):
             correct += (predicted == label).sum().item()
     
     return 100 * correct / total
+
 
 
 def predict(model, test_file, output_file, device):
@@ -271,20 +185,22 @@ def predict(model, test_file, output_file, device):
     print(f"Prediction completed and saved to {output_file}")
 
 def main():
+    # 设置设备为 GPU 或 CPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    # 加载数据
     train_loader, val_loader = load_data()
+    
+    # 初始化模型并转移到指定设备
     model = initialize_model()
     model = model.to(device)
-    # train(model, train_loader, val_loader, device)
-    # 训练仅使用文本的模型
+    
+    # 训练模型
     train(model, train_loader, val_loader, device, use_text=True, use_image=False)
-
-    # 训练仅使用图像的模型
     train(model, train_loader, val_loader, device, use_text=False, use_image=True)
-
-    # 训练使用多模态的模型
     train(model, train_loader, val_loader, device, use_text=True, use_image=True)
 
+    # 预测
     predict(model, TEST_FILE, "predictions.txt", device)
     print("Prediction completed and saved to 'predictions.txt'")
 
