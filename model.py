@@ -113,7 +113,9 @@ class MultimodalModelvs(nn.Module):
         super(MultimodalModelvs, self).__init__()
         self.text_model = text_model
         self.img_model = img_model
-        self.fc = nn.Linear(768 + 2048, num_classes)  # 拼接后的特征维度
+
+        # 根据输入模态的组合，动态调整 fc 层的输入维度
+        self.fc = nn.Linear(768 + 2048, num_classes)  # 默认的多模态融合层
 
     def forward(self, input_ids=None, attention_mask=None, img=None, use_text=True, use_image=True):
         text_features = None
