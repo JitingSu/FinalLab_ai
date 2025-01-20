@@ -42,9 +42,12 @@ def load_data():
     train_dataset = MultimodalDataset(train_data, IMG_DIR, tokenizer, transform, MAX_LENGTH, IMG_DIR)
     val_dataset = MultimodalDataset(val_data, IMG_DIR, tokenizer, transform, MAX_LENGTH, IMG_DIR)
     
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
-    
+    # train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    # val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    # 设置多个进程并行加载数据
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
+
     return train_loader, val_loader
 
 def initialize_model():
@@ -71,6 +74,11 @@ def train(model, train_loader, val_loader):
         train_loader (DataLoader): 训练数据加载器
         val_loader (DataLoader): 验证数据加载器
     """
+    # 检查是否有可用的 GPU
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # 将模型迁移到 GPU
+    model = model.to(device)
+    
     # 定义损失函数，使用交叉熵损失
     criterion = torch.nn.CrossEntropyLoss()
     # 定义优化器，使用Adam优化器
@@ -85,6 +93,9 @@ def train(model, train_loader, val_loader):
         running_loss = 0.0
         
         for input_ids, attention_mask, img, label in tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS} - Training", unit="batch"):
+            # 将数据迁移到 GPU
+            input_ids, attention_mask, img, label = input_ids.to(device), attention_mask.to(device), img.to(device), label.to(device)
+            
             # 清空梯度
             optimizer.zero_grad()
             # 前向传播
@@ -103,7 +114,7 @@ def train(model, train_loader, val_loader):
         print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_train_loss}")
         
         # 验证集评估
-        val_accuracy = evaluate(model, val_loader)
+        val_accuracy = evaluate(model, val_loader, device)  # 传递device给evaluate函数
         val_accuracies.append(val_accuracy)
         print(f"Validation Accuracy: {val_accuracy}%")
         
@@ -114,12 +125,14 @@ def train(model, train_loader, val_loader):
     # 绘制训练损失和验证准确率图表
     plot_metrics(train_losses, val_accuracies)
 
-def evaluate(model, val_loader):
+
+def evaluate(model, val_loader, device):
     """
     在验证集上评估模型的性能
     参数:
         model (nn.Module): 多模态模型
         val_loader (DataLoader): 验证数据加载器
+        device (torch.device): 设备 (CPU 或 GPU)
     返回:
         accuracy (float): 模型在验证集上的准确率
     """
@@ -132,6 +145,9 @@ def evaluate(model, val_loader):
     with torch.no_grad():
         # 包装 val_loader 以显示进度条
         for input_ids, attention_mask, img, label in tqdm(val_loader, desc="Validation", unit="batch"):
+            # 将数据迁移到 GPU
+            input_ids, attention_mask, img, label = input_ids.to(device), attention_mask.to(device), img.to(device), label.to(device)
+            
             # 前向传播，计算模型输出
             output = model(input_ids, attention_mask, img)
             # 获取预测结果，即输出中概率最大的类别
@@ -143,6 +159,7 @@ def evaluate(model, val_loader):
     
     # 计算准确率并返回
     return 100 * correct / total
+
 
 # 绘制训练损失和验证准确率的图表并保存为文件
 def plot_metrics(train_losses, val_accuracies):
@@ -168,16 +185,20 @@ def plot_metrics(train_losses, val_accuracies):
     plt.savefig('training_metrics.png')  # 保存图表为PNG文件
     print("Training metrics plot saved as 'training_metrics.png'")
 
-def predict(model, test_file, output_file):
+def predict(model, test_file, output_file, device):
     """
     在测试集上进行预测并保存结果
     参数:
         model (nn.Module): 训练好的多模态模型
         test_file (str): 测试集文件路径
         output_file (str): 预测结果保存路径
+        device (torch.device): 设备 (CPU 或 GPU)
     """
     model.load_state_dict(torch.load("best_model.pth", weights_only=True))
     model.eval()
+    
+    # 将模型迁移到 GPU
+    model = model.to(device)
     
     predictions = []
     
@@ -207,8 +228,13 @@ def predict(model, test_file, output_file):
             # 对图像进行预处理并增加一个维度以匹配模型输入
             img = transform(img).unsqueeze(0)
             
+            # 将数据迁移到 GPU
+            input_ids = text_encoding.input_ids.to(device)
+            attention_mask = text_encoding.attention_mask.to(device)
+            img = img.to(device)
+            
             # 模型预测
-            output = model(text_encoding.input_ids, text_encoding.attention_mask, img)
+            output = model(input_ids, attention_mask, img)
             _, predicted = torch.max(output, 1)
             predictions.append(predicted.item())
     
@@ -222,11 +248,25 @@ def predict(model, test_file, output_file):
 
 
 def main():
+    # 检查是否有可用的 GPU
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    # 加载数据
     train_loader, val_loader = load_data()
+    
+    # 初始化模型
     model = initialize_model()
-    train(model, train_loader, val_loader)
-    predict(model, TEST_FILE, "predictions.txt")
+    
+    # 将模型迁移到 GPU
+    model = model.to(device)
+    
+    # 训练模型
+    train(model, train_loader, val_loader, device)
+    
+    # 预测测试集
+    predict(model, TEST_FILE, "predictions.txt", device)
     print("Prediction completed and saved to 'predictions.txt'")
+
 
 if __name__ == "__main__":
     main()
