@@ -66,17 +66,16 @@ def initialize_model():
     
     return model
 
-def train(model, train_loader, val_loader):
+def train(model, train_loader, val_loader, device):
     """
     训练多模态模型
     参数:
         model (nn.Module): 多模态模型
         train_loader (DataLoader): 训练数据加载器
         val_loader (DataLoader): 验证数据加载器
+        device (torch.device): 设备 (CPU 或 GPU)
     """
-    # 检查是否有可用的 GPU
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # 将模型迁移到 GPU
+    # 将模型迁移到 GPU 或 CPU
     model = model.to(device)
     
     # 定义损失函数，使用交叉熵损失
@@ -93,7 +92,7 @@ def train(model, train_loader, val_loader):
         running_loss = 0.0
         
         for input_ids, attention_mask, img, label in tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS} - Training", unit="batch"):
-            # 将数据迁移到 GPU
+            # 将数据迁移到 GPU 或 CPU
             input_ids, attention_mask, img, label = input_ids.to(device), attention_mask.to(device), img.to(device), label.to(device)
             
             # 清空梯度
@@ -114,7 +113,7 @@ def train(model, train_loader, val_loader):
         print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_train_loss}")
         
         # 验证集评估
-        val_accuracy = evaluate(model, val_loader, device)  # 传递device给evaluate函数
+        val_accuracy = evaluate(model, val_loader, device)  # 传递 device 给 evaluate 函数
         val_accuracies.append(val_accuracy)
         print(f"Validation Accuracy: {val_accuracy}%")
         
@@ -124,6 +123,7 @@ def train(model, train_loader, val_loader):
     
     # 绘制训练损失和验证准确率图表
     plot_metrics(train_losses, val_accuracies)
+
 
 
 def evaluate(model, val_loader, device):
