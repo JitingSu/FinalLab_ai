@@ -12,13 +12,13 @@ import wandb
 
 # 参数设置
 BATCH_SIZE = 32
-EPOCHS = 30
+EPOCHS = 10
 LEARNING_RATE = 1e-5
 MAX_LENGTH = 128
 NUM_CLASSES = 3
-PATIENCE = 3  # 早停的耐心值
+PATIENCE = 3  
 
-# 数据路径
+# 数据路径们
 DATA_DIR = "/kaggle/working/dataset"
 TRAIN_FILE = os.path.join(DATA_DIR, "train.txt")
 TEST_FILE = os.path.join(DATA_DIR, "test_without_label.txt")
@@ -26,8 +26,8 @@ IMG_DIR = os.path.join(DATA_DIR, "data")
 
 # wandb初始化
 wandb.init(
-    project="FinalLab",  # 设置为你在wandb网站上创建的项目名称
-    config={  # 配置你的超参数
+    project="FinalLab",  
+    config={  
         "learning_rate": LEARNING_RATE,
         "batch_size": BATCH_SIZE,
         "epochs": EPOCHS,
@@ -35,8 +35,8 @@ wandb.init(
     }
 )
 
-# 设置BERT分词器和图像预处理
-tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", clean_up_tokenization_spaces=True)
+# 数据预处理：设置BERT分词器和图像预处理
+tokenizer = BertTokenizer.from_pretrained("bert-base-cased", clean_up_tokenization_spaces=True)
 transform = transforms.Compose([
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(30),

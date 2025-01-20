@@ -1,19 +1,26 @@
 import torch
 from torch.utils.data import Dataset
-from transformers import BertModel, BertTokenizer
-from torchvision import models
 from torch import nn
 from PIL import Image
-from torchvision.transforms import transforms
 
 class MultimodalDataset(Dataset):
     def __init__(self, data, img_dir, tokenizer, transform, max_length, data_dir):
-        self.data = data
-        self.img_dir = img_dir
-        self.tokenizer = tokenizer
-        self.transform = transform
-        self.max_length = max_length
-        self.data_dir = data_dir 
+        """
+        初始化MultimodalDataset类的实例。
+
+        :param data: 包含数据的列表，每个元素是一个字符串，表示一行数据，格式为 "guid,label"。
+        :param img_dir: 图像文件所在的目录路径。
+        :param tokenizer: 用于处理文本数据的tokenizer对象。
+        :param transform: 用于处理图像数据的transform对象。
+        :param max_length: 文本数据的最大长度，用于tokenizer的padding。
+        :param data_dir: 文本文件所在的目录路径。
+        """
+        self.data = data  # 存储数据集，格式为列表，每个元素是一行数据（guid, label）
+        self.img_dir = img_dir  # 图像文件的目录路径
+        self.tokenizer = tokenizer  # 用于文本编码的tokenizer对象
+        self.transform = transform  # 用于图像预处理的transform对象
+        self.max_length = max_length  # 文本的最大长度，用于tokenizer的padding
+        self.data_dir = data_dir  # 文本文件的目录路径
 
     def __len__(self):
         return len(self.data)
@@ -25,7 +32,6 @@ class MultimodalDataset(Dataset):
             # 尝试拆分每行数据（用逗号分隔）
             guid, label = line.strip().split(",")
         except ValueError:
-            # 如果拆分失败，输出警告并跳过该行
             print(f"Skipping invalid line: {line}")
             return None 
 
@@ -41,7 +47,7 @@ class MultimodalDataset(Dataset):
         encoding = self.tokenizer(
             text, truncation=True, padding="max_length", max_length=self.max_length, return_tensors="pt"
         )
-        input_ids = encoding['input_ids'].squeeze(0)  # 去掉多余的batch维度
+        input_ids = encoding['input_ids'].squeeze(0)  
         attention_mask = encoding['attention_mask'].squeeze(0)
 
         # 处理图像数据
@@ -63,7 +69,6 @@ class MultimodalDataset(Dataset):
         return input_ids, attention_mask, img, torch.tensor(label)
 
 
-# 多模态融合模型: MultimodalModel
 class MultimodalModel(nn.Module):
     def __init__(self, text_model, img_model, num_classes):
         """
