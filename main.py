@@ -124,17 +124,17 @@ def train(model, train_loader, val_loader, device):
         # 记录验证准确率到wandb
         wandb.log({"val/accuracy": val_accuracy})
 
-        # 早停判断
-        if val_accuracy > best_val_accuracy:
-            best_val_accuracy = val_accuracy
-            torch.save(model.state_dict(), "best_model.pth")
-            patience_counter = 0
-        else:
-            patience_counter += 1
+        # # 早停判断
+        # if val_accuracy > best_val_accuracy:
+        #     best_val_accuracy = val_accuracy
+        #     torch.save(model.state_dict(), "best_model.pth")
+        #     patience_counter = 0
+        # else:
+        #     patience_counter += 1
         
-        if patience_counter >= PATIENCE:
-            print("Early stopping triggered, stopping training.")
-            break
+        # if patience_counter >= PATIENCE:
+        #     print("Early stopping triggered, stopping training.")
+        #     break
         
         # 学习率调度器
         scheduler.step()
