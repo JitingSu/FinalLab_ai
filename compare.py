@@ -191,10 +191,8 @@ def main():
     train_loader, val_loader = load_data()
     
     # 初始化模型并转移到指定设备
-    # model = initialize_model()
-    model = model.to(device)  # 将模型转移到设备
     model = initialize_model()
-    
+    model = model.to(device)  # 将模型转移到设备
     
     # 训练模型
     train(model, train_loader, val_loader, device, use_text=True, use_image=False)
