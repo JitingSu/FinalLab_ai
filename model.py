@@ -68,12 +68,52 @@ class MultimodalDataset(Dataset):
 
         return input_ids, attention_mask, img, torch.tensor(label)
 
+
 class MultimodalModel(nn.Module):
+    def __init__(self, text_model, img_model, num_classes):
+        """
+        初始化多模态融合模型
+        :param text_model: 文本模型（BERT）
+        :param img_model: 图像模型（ResNet）
+        :param num_classes: 输出类别数（对于三分类任务：positive, neutral, negative）
+        """
+        super(MultimodalModel, self).__init__()
+        self.text_model = text_model
+        self.img_model = img_model
+        
+        # 文本模型部分
+        self.text_fc = nn.Linear(768, 256)  # BERT的输出是768维，做一个映射到256维
+        
+        # 图像模型部分
+        self.img_fc = nn.Linear(2048, 256)  # ResNet50的输出是2048维，做一个映射到256维
+        
+        # 融合后的全连接层
+        self.fc = nn.Linear(256 * 2, num_classes)  # 文本和图像特征拼接后是512维，映射到类别数
+
+    def forward(self, input_ids, attention_mask, img):
+        # 文本部分
+        text_output = self.text_model(input_ids, attention_mask=attention_mask)
+        text_features = text_output.pooler_output  # 获取BERT的池化层输出
+        text_features = self.text_fc(text_features)  # 通过全连接层
+        
+        # 图像部分
+        img_features = self.img_model(img)  # 通过ResNet50提取图像特征
+        img_features = self.img_fc(img_features)  # 通过全连接层
+
+        # 融合文本和图像特征
+        combined_features = torch.cat((text_features, img_features), dim=1)
+
+        # 分类部分
+        output = self.fc(combined_features)
+        return output
+    
+    
+class MultimodalModelvs(nn.Module):
     def __init__(self, text_model, img_model, num_classes):
         super(MultimodalModel, self).__init__()
         self.text_model = text_model
         self.img_model = img_model
-        self.fc = nn.Linear(768 + 2048, num_classes)  # 默认的多模态融合层
+        self.fc = nn.Linear(768 + 2048, num_classes)  # 拼接后的特征维度
 
     def forward(self, input_ids=None, attention_mask=None, img=None, use_text=True, use_image=True):
         text_features = None
@@ -100,41 +140,3 @@ class MultimodalModel(nn.Module):
 
         output = self.fc(combined_features)
         return output
-
-# class MultimodalModel(nn.Module):
-#     def __init__(self, text_model, img_model, num_classes):
-#         """
-#         初始化多模态融合模型
-#         :param text_model: 文本模型（BERT）
-#         :param img_model: 图像模型（ResNet）
-#         :param num_classes: 输出类别数（对于三分类任务：positive, neutral, negative）
-#         """
-#         super(MultimodalModel, self).__init__()
-#         self.text_model = text_model
-#         self.img_model = img_model
-        
-#         # 文本模型部分
-#         self.text_fc = nn.Linear(768, 256)  # BERT的输出是768维，做一个映射到256维
-        
-#         # 图像模型部分
-#         self.img_fc = nn.Linear(2048, 256)  # ResNet50的输出是2048维，做一个映射到256维
-        
-#         # 融合后的全连接层
-#         self.fc = nn.Linear(256 * 2, num_classes)  # 文本和图像特征拼接后是512维，映射到类别数
-
-#     def forward(self, input_ids, attention_mask, img):
-#         # 文本部分
-#         text_output = self.text_model(input_ids, attention_mask=attention_mask)
-#         text_features = text_output.pooler_output  # 获取BERT的池化层输出
-#         text_features = self.text_fc(text_features)  # 通过全连接层
-        
-#         # 图像部分
-#         img_features = self.img_model(img)  # 通过ResNet50提取图像特征
-#         img_features = self.img_fc(img_features)  # 通过全连接层
-
-#         # 融合文本和图像特征
-#         combined_features = torch.cat((text_features, img_features), dim=1)
-
-#         # 分类部分
-#         output = self.fc(combined_features)
-#         return output
