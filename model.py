@@ -110,7 +110,7 @@ class MultimodalModel(nn.Module):
     
 class MultimodalModelvs(nn.Module):
     def __init__(self, text_model, img_model, num_classes):
-        super(MultimodalModel, self).__init__()
+        super(MultimodalModelvs, self).__init__()
         self.text_model = text_model
         self.img_model = img_model
         self.fc = nn.Linear(768 + 2048, num_classes)  # 拼接后的特征维度
