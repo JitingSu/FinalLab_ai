@@ -9,10 +9,11 @@ from model import MultimodalDataset, MultimodalModel
 from PIL import Image  
 from torchvision.models import ResNet50_Weights
 import wandb
+import matplotlib.pyplot as plt
 
 # 参数设置
 BATCH_SIZE = 32
-EPOCHS = 30
+EPOCHS = 20
 LEARNING_RATE = 1e-5
 MAX_LENGTH = 128
 NUM_CLASSES = 3
@@ -67,7 +68,7 @@ def initialize_model():
     model = MultimodalModel(text_model, img_model, NUM_CLASSES)
     return model
 
-def train(model, train_loader, val_loader, device):
+def train(model, train_loader, val_loader, device, model_type="multimodal"):
     model = model.to(device)
     
     # 使用L2正则化（weight_decay）来防止过拟合
@@ -83,7 +84,7 @@ def train(model, train_loader, val_loader, device):
     val_accuracies = []
     
     # 早停
-    patience_counter = 0
+    # patience_counter = 0
     
     for epoch in range(EPOCHS):
         model.train()
@@ -95,7 +96,13 @@ def train(model, train_loader, val_loader, device):
             input_ids, attention_mask, img, label = input_ids.to(device), attention_mask.to(device), img.to(device), label.to(device)
             
             optimizer.zero_grad()
-            output = model(input_ids, attention_mask, img)
+            if model_type == "text":
+                output = model.text_model(input_ids, attention_mask=attention_mask)
+            elif model_type == "image":
+                output = model.img_model(img)
+            else:
+                output = model(input_ids, attention_mask, img)  # 多模态模型
+            
             loss = criterion(output, label)
             loss.backward()
             optimizer.step()
@@ -124,22 +131,24 @@ def train(model, train_loader, val_loader, device):
         # 记录验证准确率到wandb
         wandb.log({"val/accuracy": val_accuracy})
 
-        # 早停判断
-        if val_accuracy > best_val_accuracy:
-            best_val_accuracy = val_accuracy
-            torch.save(model.state_dict(), "best_model.pth")
-            patience_counter = 0
-        else:
-            patience_counter += 1
+        # # 早停判断
+        # if val_accuracy > best_val_accuracy:
+        #     best_val_accuracy = val_accuracy
+        #     torch.save(model.state_dict(), f"{model_type}_best_model.pth")
+        #     patience_counter = 0
+        # else:
+        #     patience_counter += 1
         
-        if patience_counter >= PATIENCE:
-            print("Early stopping triggered, stopping training.")
-            break
+        # if patience_counter >= PATIENCE:
+        #     print(f"Early stopping triggered for {model_type}, stopping training.")
+        #     break
         
         # 学习率调度器
         scheduler.step()
 
     wandb.finish()
+    return train_losses, train_accuracies, val_accuracies
+
 
 def evaluate(model, val_loader, device):
     model.eval()
@@ -156,56 +165,61 @@ def evaluate(model, val_loader, device):
     
     return 100 * correct / total
 
-def predict(model, test_file, output_file, device):
-    model.load_state_dict(torch.load("best_model.pth", weights_only=True))
-    model.eval()
-    model = model.to(device)
-    
-    predictions = []
-    
-    with open(test_file, "r") as f:
-        lines = f.readlines()[1:] 
-        
-        for line in tqdm(lines, desc="Predicting", unit="sample"):
-            guid = line.strip().split(",")[0]
-            try:
-                text = open(f"{DATA_DIR}/data/{guid}.txt", "r", encoding="ISO-8859-1").read()  
-            except FileNotFoundError:
-                print(f"Text file {guid}.txt not found. Skipping this sample.")
-                continue
-            
-            text_encoding = tokenizer(text, truncation=True, padding="max_length", max_length=MAX_LENGTH, return_tensors="pt")
-            
-            try:
-                img = Image.open(f"{DATA_DIR}/data/{guid}.jpg")  
-            except FileNotFoundError:
-                print(f"Image file {guid}.jpg not found. Skipping this sample.")
-                continue
+def plot_comparison_graphs(text_losses, text_accuracies, img_losses, img_accuracies, multimodal_losses, multimodal_accuracies):
+    plt.figure(figsize=(15, 10))
 
-            img = transform(img).unsqueeze(0)
-            input_ids = text_encoding.input_ids.to(device)
-            attention_mask = text_encoding.attention_mask.to(device)
-            img = img.to(device)
-            
-            output = model(input_ids, attention_mask, img)
-            _, predicted = torch.max(output, 1)
-            predictions.append(predicted.item())
-    
-    with open(output_file, "w") as f:
-        f.write("guid,tag\n")  
-        for guid, label in zip(open(test_file, 'r').readlines()[1:], predictions):
-            f.write(f"{guid.strip().split(',')[0]},{['positive', 'neutral', 'negative'][label]}\n")
-    
-    print(f"Prediction completed and saved to {output_file}")
+    # 绘制训练损失图
+    plt.subplot(2, 2, 1)
+    plt.plot(text_losses, label="Text Model Loss")
+    plt.plot(img_losses, label="Image Model Loss")
+    plt.plot(multimodal_losses, label="Multimodal Model Loss")
+    plt.title("Training Loss Comparison")
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.legend()
+
+    # 绘制训练准确率图
+    plt.subplot(2, 2, 2)
+    plt.plot(text_accuracies, label="Text Model Accuracy")
+    plt.plot(img_accuracies, label="Image Model Accuracy")
+    plt.plot(multimodal_accuracies, label="Multimodal Model Accuracy")
+    plt.title("Training Accuracy Comparison")
+    plt.xlabel("Epochs")
+    plt.ylabel("Accuracy (%)")
+    plt.legend()
+
+    # 绘制验证准确率图
+    plt.subplot(2, 2, 3)
+    plt.plot(multimodal_accuracies, label="Multimodal Model Accuracy")
+    plt.title("Validation Accuracy Comparison")
+    plt.xlabel("Epochs")
+    plt.ylabel("Accuracy (%)")
+    plt.legend()
+
+    plt.tight_layout()
+    plt.savefig('comparison_metrics.png')  # 保存为图片
+    plt.show()
+
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_loader, val_loader = load_data()
+    
+    # 初始化模型
     model = initialize_model()
     model = model.to(device)
-    train(model, train_loader, val_loader, device)
-    predict(model, TEST_FILE, "predictions.txt", device)
-    print("Prediction completed and saved to 'predictions.txt'")
+    
+    # 训练文本模型
+    text_losses, text_accuracies, _ = train(model, train_loader, val_loader, device, model_type="text")
+    
+    # 训练图像模型
+    img_losses, img_accuracies, _ = train(model, train_loader, val_loader, device, model_type="image")
+    
+    # 训练多模态模型
+    multimodal_losses, multimodal_accuracies, _ = train(model, train_loader, val_loader, device, model_type="multimodal")
+    
+    # 绘制比较图表
+    plot_comparison_graphs(text_losses, text_accuracies, img_losses, img_accuracies, multimodal_losses, multimodal_accuracies)
 
 if __name__ == "__main__":
     main()

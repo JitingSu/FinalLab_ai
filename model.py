@@ -8,15 +8,6 @@ from torchvision.transforms import transforms
 
 class MultimodalDataset(Dataset):
     def __init__(self, data, img_dir, tokenizer, transform, max_length, data_dir):
-        """
-        初始化数据集类
-        :param data: 包含文本和标签的列表，格式为 ["guid1,label1", "guid2,label2", ...]
-        :param img_dir: 图片存放的文件夹路径
-        :param tokenizer: BERT分词器
-        :param transform: 图像的预处理变换
-        :param max_length: 文本最大长度
-        :param data_dir: 文本文件所在的目录
-        """
         self.data = data
         self.img_dir = img_dir
         self.tokenizer = tokenizer
