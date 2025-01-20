@@ -78,6 +78,8 @@ def initialize_model():
     
     return model
 
+import wandb
+
 def train(model, train_loader, val_loader, device):
     """
     训练多模态模型
@@ -136,7 +138,7 @@ def train(model, train_loader, val_loader, device):
         print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_train_loss}, Accuracy: {avg_train_accuracy}%")
         
         # 记录训练损失和准确率到wandb
-        wandb.log({"train_loss": avg_train_loss, "train_accuracy": avg_train_accuracy})
+        wandb.log({"train/loss": avg_train_loss, "train/accuracy": avg_train_accuracy})
         
         # 验证集评估
         val_accuracy = evaluate(model, val_loader, device)  # 传递 device 给 evaluate 函数
@@ -144,7 +146,7 @@ def train(model, train_loader, val_loader, device):
         print(f"Validation Accuracy: {val_accuracy}%")
         
         # 记录验证准确率到wandb
-        wandb.log({"val_accuracy": val_accuracy})
+        wandb.log({"val/accuracy": val_accuracy})
 
         if val_accuracy > best_val_accuracy:
             best_val_accuracy = val_accuracy
