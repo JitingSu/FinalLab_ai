@@ -68,7 +68,7 @@ def initialize_model():
     return model
 
 def train(model, train_loader, val_loader, device, use_text=True, use_image=True):
-    model = model.to(device)  # 将模型移到指定设备
+    model = model.to(device)  # 确保模型在正确的设备上
 
     # 使用L2正则化（weight_decay）来防止过拟合
     criterion = torch.nn.CrossEntropyLoss()
@@ -92,7 +92,7 @@ def train(model, train_loader, val_loader, device, use_text=True, use_image=True
         total_train = 0
         
         for input_ids, attention_mask, img, label in tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS} - Training", unit="batch"):
-            # 将数据移到相同设备
+            # 确保所有输入数据都在相同的设备上
             input_ids, attention_mask, img, label = input_ids.to(device), attention_mask.to(device), img.to(device), label.to(device)
             
             optimizer.zero_grad()
@@ -131,7 +131,7 @@ def evaluate(model, val_loader, device, use_text=True, use_image=True):
     
     with torch.no_grad():
         for input_ids, attention_mask, img, label in tqdm(val_loader, desc="Validation", unit="batch"):
-            # 将数据移到相同设备
+            # 确保所有输入数据都在相同的设备上
             input_ids, attention_mask, img, label = input_ids.to(device), attention_mask.to(device), img.to(device), label.to(device)
             output = model(input_ids, attention_mask, img, use_text=use_text, use_image=use_image)
             _, predicted = torch.max(output, 1)
@@ -139,8 +139,6 @@ def evaluate(model, val_loader, device, use_text=True, use_image=True):
             correct += (predicted == label).sum().item()
     
     return 100 * correct / total
-
-
 
 def predict(model, test_file, output_file, device):
     model.load_state_dict(torch.load("best_model.pth", weights_only=True))
@@ -193,7 +191,7 @@ def main():
     
     # 初始化模型并转移到指定设备
     model = initialize_model()
-    model = model.to(device)
+    model = model.to(device)  # 将模型转移到设备
     
     # 训练模型
     train(model, train_loader, val_loader, device, use_text=True, use_image=False)
