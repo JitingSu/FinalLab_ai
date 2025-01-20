@@ -36,12 +36,20 @@ wandb.init(
 
 # 设置BERT分词器和图像预处理
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", clean_up_tokenization_spaces=True)
+# transform = transforms.Compose([
+#     transforms.Resize((224, 224)),
+#     transforms.ToTensor(),
+#     # 对图像进行归一化处理，使用的均值和标准差是基于ImageNet数据集的统计值
+#     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+# ])
 transform = transforms.Compose([
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(30),
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    # 对图像进行归一化处理，使用的均值和标准差是基于ImageNet数据集的统计值
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
+
 
 # 加载数据
 def load_data():
