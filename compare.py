@@ -147,7 +147,8 @@ def plot_comparison_graph(text_losses, text_accuracies, val_accuracies, image_lo
     plt.legend()
     
     plt.tight_layout()
-    plt.show()
+    plt.savefig('model_comparison.png')  # Save the figure as a PNG file
+    print("Comparison plot saved as 'model_comparison.png'")
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
