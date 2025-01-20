@@ -284,6 +284,7 @@ def main():
 
     # 训练使用多模态的模型
     train(model, train_loader, val_loader, device, use_text=True, use_image=True)
+
     predict(model, TEST_FILE, "predictions.txt", device)
     print("Prediction completed and saved to 'predictions.txt'")
 
