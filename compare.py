@@ -9,6 +9,7 @@ from model import MultimodalDataset, MultimodalModelvs
 from PIL import Image  
 from torchvision.models import ResNet50_Weights
 import wandb
+import matplotlib.pyplot as plt  # 导入 matplotlib 用于绘图
 
 # 参数设置
 BATCH_SIZE = 32
@@ -16,7 +17,6 @@ EPOCHS = 10
 LEARNING_RATE = 1e-5
 MAX_LENGTH = 128
 NUM_CLASSES = 3
-PATIENCE = 3  
 
 # 数据路径们
 DATA_DIR = "/kaggle/working/dataset"
@@ -67,7 +67,7 @@ def initialize_model():
     model = MultimodalModelvs(text_model, img_model, NUM_CLASSES)
     return model
 
-def train(model, train_loader, val_loader, device, use_text=True, use_image=True):
+def train(model, train_loader, val_loader, device, use_text=True, use_image=True, model_name="BERT + ResNet50"):
     model = model.to(device)  # 确保模型在正确的设备上
 
     # 使用L2正则化（weight_decay）来防止过拟合
@@ -77,13 +77,9 @@ def train(model, train_loader, val_loader, device, use_text=True, use_image=True
     # 使用学习率调度器，每10个epoch调整一次学习率
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
     
-    best_val_accuracy = 0
     train_losses = []
     train_accuracies = []
     val_accuracies = []
-    
-    # 早停策略
-    patience_counter = 0
     
     for epoch in range(EPOCHS):
         model.train()
@@ -122,19 +118,8 @@ def train(model, train_loader, val_loader, device, use_text=True, use_image=True
         # 学习率调度器
         scheduler.step()
 
-        # 早停判断
-        if val_accuracy > best_val_accuracy:
-            best_val_accuracy = val_accuracy
-            patience_counter = 0
-            # 保存最佳模型
-            torch.save(model.state_dict(), "best_model.pth")
-        else:
-            patience_counter += 1
-            if patience_counter >= PATIENCE:
-                print("Early stopping triggered!")
-                break
-
-    wandb.finish()
+    # 返回训练损失和验证准确率
+    return train_losses, train_accuracies, val_accuracies
 
 def evaluate(model, val_loader, device, use_text=True, use_image=True):
     model.eval()
@@ -152,8 +137,10 @@ def evaluate(model, val_loader, device, use_text=True, use_image=True):
     
     return 100 * correct / total
 
-def predict(model, test_file, output_file, device):
-    model.load_state_dict(torch.load("best_model.pth", weights_only=True))  # 加载最佳模型
+def predict(model, test_file, output_file, device, use_text=True, use_image=True):
+    """
+    使用训练好的模型进行预测，并将结果保存到文件
+    """
     model.eval()
     model = model.to(device)
     
@@ -183,7 +170,7 @@ def predict(model, test_file, output_file, device):
             attention_mask = text_encoding.attention_mask.to(device)
             img = img.to(device)
             
-            output = model(input_ids, attention_mask, img)
+            output = model(input_ids, attention_mask, img, use_text=use_text, use_image=use_image)
             _, predicted = torch.max(output, 1)
             predictions.append(predicted.item())
     
@@ -193,6 +180,34 @@ def predict(model, test_file, output_file, device):
             f.write(f"{guid.strip().split(',')[0]},{['positive', 'neutral', 'negative'][label]}\n")
     
     print(f"Prediction completed and saved to {output_file}")
+
+def plot_metrics(train_losses_list, val_accuracies_list, model_names, save_dir="plots"):
+    """
+    绘制训练损失和验证准确率图表，并保存到本地
+    """
+    os.makedirs(save_dir, exist_ok=True)  # 创建保存图表的目录
+
+    # 绘制训练损失图表
+    plt.figure(figsize=(10, 5))
+    for i, train_losses in enumerate(train_losses_list):
+        plt.plot(train_losses, label=f"{model_names[i]} - Train Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training Loss")
+    plt.legend()
+    plt.savefig(os.path.join(save_dir, "training_loss.png"))  # 保存图表
+    plt.close()
+
+    # 绘制验证准确率图表
+    plt.figure(figsize=(10, 5))
+    for i, val_accuracies in enumerate(val_accuracies_list):
+        plt.plot(val_accuracies, label=f"{model_names[i]} - Val Accuracy")
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+    plt.title("Validation Accuracy")
+    plt.legend()
+    plt.savefig(os.path.join(save_dir, "validation_accuracy.png"))  # 保存图表
+    plt.close()
 
 def main():
     # 设置设备为 GPU 或 CPU
@@ -205,13 +220,31 @@ def main():
     model = initialize_model()
     model = model.to(device)  # 将模型转移到设备
     
-    # 训练模型
-    train(model, train_loader, val_loader, device, use_text=True, use_image=False)
-    train(model, train_loader, val_loader, device, use_text=False, use_image=True)
-    train(model, train_loader, val_loader, device, use_text=True, use_image=True)
+    # 训练模型并记录结果
+    train_losses_list = []
+    val_accuracies_list = []
+    model_names = ["Text Only", "Image Only", "Text + Image"]
+
+    # 训练文本模型
+    train_losses, train_accuracies, val_accuracies = train(model, train_loader, val_loader, device, use_text=True, use_image=False, model_name=model_names[0])
+    train_losses_list.append(train_losses)
+    val_accuracies_list.append(val_accuracies)
+
+    # 训练图像模型
+    train_losses, train_accuracies, val_accuracies = train(model, train_loader, val_loader, device, use_text=False, use_image=True, model_name=model_names[1])
+    train_losses_list.append(train_losses)
+    val_accuracies_list.append(val_accuracies)
+
+    # 训练文本 + 图像模型
+    train_losses, train_accuracies, val_accuracies = train(model, train_loader, val_loader, device, use_text=True, use_image=True, model_name=model_names[2])
+    train_losses_list.append(train_losses)
+    val_accuracies_list.append(val_accuracies)
+
+    # 绘制并保存图表
+    plot_metrics(train_losses_list, val_accuracies_list, model_names)
 
     # 预测
-    predict(model, TEST_FILE, "predictions.txt", device)
+    predict(model, TEST_FILE, "predictions.txt", device, use_text=True, use_image=True)
     print("Prediction completed and saved to 'predictions.txt'")
 
 if __name__ == "__main__":
