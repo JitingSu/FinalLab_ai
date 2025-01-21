@@ -153,12 +153,10 @@ class MultimodalModelef(nn.Module):
         self.img_model = img_model
         
         # 文本模型部分
-        self.text_fc = nn.Linear(768, 256)
-        self.dropout1 = nn.Dropout(0.5)  # 添加 Dropout
+        self.text_fc = nn.Linear(768, 256)  # BERT 的输出是 768 维
         
         # 图像模型部分
         self.img_fc = nn.Linear(1024, 256)  # ConvNeXt-Base 的输出是 1024 维
-        self.dropout2 = nn.Dropout(0.5)  # 添加 Dropout
         
         # 融合后的全连接层
         self.fc = nn.Linear(256 * 2, num_classes)
@@ -166,12 +164,14 @@ class MultimodalModelef(nn.Module):
     def forward(self, input_ids, attention_mask, img):
         # 文本部分
         text_output = self.text_model(input_ids, attention_mask=attention_mask)
-        text_features = text_output.last_hidden_state.mean(dim=1)
-        text_features = self.dropout1(self.text_fc(text_features))  # 添加 Dropout
+        text_features = text_output.last_hidden_state.mean(dim=1)  # 平均池化
+        text_features = self.text_fc(text_features)
         
         # 图像部分
-        img_features = self.img_model(img)
-        img_features = self.dropout2(self.img_fc(img_features))  # 添加 Dropout
+        img_features = self.img_model(img)  # ConvNeXt 的输出形状是 (batch_size, 1024, H, W)
+        img_features = F.adaptive_avg_pool2d(img_features, (1, 1))  # 全局平均池化
+        img_features = img_features.view(img_features.size(0), -1)  # 展平为 (batch_size, 1024)
+        img_features = self.img_fc(img_features)
 
         # 融合文本和图像特征
         combined_features = torch.cat((text_features, img_features), dim=1)
