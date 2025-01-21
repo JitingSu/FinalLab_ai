@@ -146,6 +146,8 @@ class MultimodalModelvs(nn.Module):
 
         return output
 
+import torch.nn.functional as F
+
 class MultimodalModelef(nn.Module):
     def __init__(self, text_model, img_model, num_classes):
         super(MultimodalModelef, self).__init__()
