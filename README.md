@@ -63,8 +63,12 @@ python main.py
 
 Parts of this code are based on the following repositories:
 
-- [Zhihu](https://zhuanlan.zhihu.com/p/402997033)
+- [Zhihu1](https://zhuanlan.zhihu.com/p/402997033)
+
+- [Zhihu2](https://zhuanlan.zhihu.com/p/661656067)
 
 - [Paper](https://ieeexplore.ieee.org/abstract/document/9736584)
 
 - [GloGNN](https://github.com/RecklessRonan/GloGNN/blob/master/readme.md)
+
+- [CLMLF](https://github.com/Link-Li/CLMLF)
