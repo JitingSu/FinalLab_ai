@@ -1,0 +1,9 @@
+{"time":"2025-01-21T09:51:41.7322103+08:00","level":"INFO","msg":"stream: starting","core version":"0.19.4","symlink path":"E:\\Learning_material\\junior\\AI\\5_FinalLab\\FinalLab_ai\\wandb\\run-20250121_095141-tylm5fkh\\logs\\debug-core.log"}
+{"time":"2025-01-21T09:51:41.8471221+08:00","level":"INFO","msg":"created new stream","id":"tylm5fkh"}
+{"time":"2025-01-21T09:51:41.8471221+08:00","level":"INFO","msg":"stream: started","id":"tylm5fkh"}
+{"time":"2025-01-21T09:51:41.8477066+08:00","level":"INFO","msg":"sender: started","stream_id":"tylm5fkh"}
+{"time":"2025-01-21T09:51:41.8477066+08:00","level":"INFO","msg":"writer: Do: started","stream_id":"tylm5fkh"}
+{"time":"2025-01-21T09:51:41.8477066+08:00","level":"INFO","msg":"handler: started","stream_id":"tylm5fkh"}
+{"time":"2025-01-21T09:51:42.990841+08:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-01-21T09:51:53.0033619+08:00","level":"ERROR","msg":"monitor: cpu: error sampling metrics: couldn't find pid: 28336"}
+{"time":"2025-01-21T09:52:02.998876+08:00","level":"ERROR","msg":"monitor: cpu: error sampling metrics: couldn't find pid: 28336"}

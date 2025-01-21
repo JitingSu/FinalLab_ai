@@ -113,8 +113,10 @@ class MultimodalModelvs(nn.Module):
         self.text_model = text_model
         self.img_model = img_model
         
-        # 定义默认的 fc 层，假设文本和图像拼接后的维度为 2816
-        self.fc = nn.Linear(768 + 2048, num_classes)  # 默认拼接后的维度（文本+图像）
+        # 定义多个 fc 层以支持不同的输入组合
+        self.fc_text_only = nn.Linear(768, num_classes)  # 仅文本
+        self.fc_img_only = nn.Linear(2048, num_classes)  # 仅图像
+        self.fc_combined = nn.Linear(768 + 2048, num_classes)  # 文本 + 图像
 
     def forward(self, input_ids=None, attention_mask=None, img=None, use_text=True, use_image=True):
         text_features = None
@@ -132,16 +134,12 @@ class MultimodalModelvs(nn.Module):
         # 合并文本特征和图像特征
         if text_features is not None and img_features is not None:
             combined_features = torch.cat((text_features, img_features), dim=1)  # 拼接
+            output = self.fc_combined(combined_features)  # 使用拼接后的特征
         elif text_features is not None:
-            combined_features = text_features  # 仅使用文本特征
+            output = self.fc_text_only(text_features)  # 仅使用文本特征
         elif img_features is not None:
-            combined_features = img_features  # 仅使用图像特征
+            output = self.fc_img_only(img_features)  # 仅使用图像特征
         else:
             raise ValueError("Both input modalities are None!")
 
-        # 根据 combined_features 的维度调整 fc 层的输入维度
-        input_dim = combined_features.size(1)  # 获取拼接后的特征维度
-        self.fc = nn.Linear(input_dim, 3)  # 动态调整 fc 层的输入维度
-
-        output = self.fc(combined_features)  # 使用动态调整的 fc 层进行输出
         return output

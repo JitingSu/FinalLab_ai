@@ -1,0 +1,7 @@
+{"time":"2025-01-21T09:51:28.7455933+08:00","level":"INFO","msg":"stream: starting","core version":"0.19.4","symlink path":"E:\\Learning_material\\junior\\AI\\5_FinalLab\\FinalLab_ai\\wandb\\run-20250121_095128-bjzownc2\\logs\\debug-core.log"}
+{"time":"2025-01-21T09:51:28.865069+08:00","level":"INFO","msg":"created new stream","id":"bjzownc2"}
+{"time":"2025-01-21T09:51:28.865069+08:00","level":"INFO","msg":"stream: started","id":"bjzownc2"}
+{"time":"2025-01-21T09:51:28.8656986+08:00","level":"INFO","msg":"writer: Do: started","stream_id":"bjzownc2"}
+{"time":"2025-01-21T09:51:28.8656986+08:00","level":"INFO","msg":"sender: started","stream_id":"bjzownc2"}
+{"time":"2025-01-21T09:51:28.8656986+08:00","level":"INFO","msg":"handler: started","stream_id":"bjzownc2"}
+{"time":"2025-01-21T09:51:29.629894+08:00","level":"INFO","msg":"Starting system monitor"}
