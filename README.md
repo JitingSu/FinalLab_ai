@@ -16,27 +16,28 @@
 
 也可以运行以下命令进行依赖安装：
 
-```python
+```powershell
 pip install -r requirements.txt
 ```
 
 ## Repository structure
 本次实验文件夹结构组成如下：
 
-```python
-|-- result.txt    		# 预测文件
+```
+|-- predictions.txt    	# 预测文件
 |-- main.py  		    # 主程序入口
 |-- model.py  		    # 模型构建与数据预处理模块
-|-- draft.ipynb			# 在kaggle运行代码的notebook过程
+|-- ablation.py 		# 消融实验入口
+|-- process.ipynb		# 在kaggle运行代码的notebook记录
 |-- requirements.txt
 |-- README.md  
 |-- best_model.pth		# 训练保存的最佳模型
 ```
 
 ## Run 
-1. 确保本地保存有本次实验的数据集，数据集结构如下：
+1. 确保您的电脑本地保存有本次实验的数据集，数据集结构如下：
 
-```python
+```
 |-- train.txt    		  # 数据的guid和对应的情感标签
 |-- test_without_label.py # 数据的guid和空的情感标签
 |-- data   			      # 包括所有的训练文本和图片
@@ -62,10 +63,6 @@ python main.py
 
 ```python
 train(model, train_loader, val_loader, device)
-
-# 以下代码已包含在predict函数中
-# model.load_state_dict(torch.load("best_model.pth"))
-# model.eval()
 ```
 
 

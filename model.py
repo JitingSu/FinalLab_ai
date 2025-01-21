@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import Dataset
 from torch import nn
 from PIL import Image
+import torch.nn.functional as F
 
 class MultimodalDataset(Dataset):
     def __init__(self, data, img_dir, tokenizer, transform, max_length, data_dir):
@@ -15,54 +16,59 @@ class MultimodalDataset(Dataset):
         :param max_length: 文本数据的最大长度，用于tokenizer的padding。
         :param data_dir: 文本文件所在的目录路径。
         """
-        self.data = data  # 存储数据集，格式为列表，每个元素是一行数据（guid, label）
-        self.img_dir = img_dir  # 图像文件的目录路径
-        self.tokenizer = tokenizer  # 用于文本编码的tokenizer对象
-        self.transform = transform  # 用于图像预处理的transform对象
-        self.max_length = max_length  # 文本的最大长度，用于tokenizer的padding
-        self.data_dir = data_dir  # 文本文件的目录路径
+        self.data = data  
+        self.img_dir = img_dir  
+        self.tokenizer = tokenizer 
+        self.transform = transform  
+        self.max_length = max_length  
+        self.data_dir = data_dir  
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         line = self.data[idx]
-        
+
         try:
-            # 尝试拆分每行数据（用逗号分隔）
             guid, label = line.strip().split(",")
         except ValueError:
             print(f"Skipping invalid line: {line}")
-            return None 
+            return None
 
         # 处理文本数据
         try:
             # 使用 ISO-8859-1 编码
-            with open(f"{self.data_dir}/{guid}.txt", "r", encoding="ISO-8859-1") as file:
+            with open(
+                f"{self.data_dir}/{guid}.txt", "r", encoding="ISO-8859-1"
+            ) as file:
                 text = file.read()
         except FileNotFoundError:
             print(f"Text file {guid}.txt not found. Skipping this sample.")
-            return None  
+            return None
 
         encoding = self.tokenizer(
-            text, truncation=True, padding="max_length", max_length=self.max_length, return_tensors="pt"
+            text,
+            truncation=True,
+            padding="max_length",
+            max_length=self.max_length,
+            return_tensors="pt",
         )
-        input_ids = encoding['input_ids'].squeeze(0)  
-        attention_mask = encoding['attention_mask'].squeeze(0)
+        input_ids = encoding["input_ids"].squeeze(0)
+        attention_mask = encoding["attention_mask"].squeeze(0)
 
         # 处理图像数据
         try:
             img = Image.open(f"{self.img_dir}/{guid}.jpg")
-            img = self.transform(img)  
+            img = self.transform(img)
         except FileNotFoundError:
             print(f"Image file {guid}.jpg not found. Skipping this sample.")
-            return None  
+            return None
 
         # 将标签转换为数字
-        label_map = {'positive': 0, 'neutral': 1, 'negative': 2}
+        label_map = {"positive": 0, "neutral": 1, "negative": 2}
         if label not in label_map:
             print(f"Invalid label {label} for guid {guid}. Skipping this sample.")
-            return None  
+            return None
 
         label = label_map[label]
 
@@ -81,17 +87,19 @@ class MultimodalModel(nn.Module):
         super(MultimodalModel, self).__init__()
         self.text_model = text_model
         self.img_model = img_model
-        
+
         # 文本模型部分
         self.text_fc = nn.Linear(768, 256)  # BERT的输出是768维，做一个映射到256维
         self.text_dropout = nn.Dropout(dropout_rate)  # 添加Dropout层
-        
+
         # 图像模型部分
         self.img_fc = nn.Linear(2048, 256)  # ResNet50的输出是2048维，做一个映射到256维
         self.img_dropout = nn.Dropout(dropout_rate)  # 添加Dropout层
-        
+
         # 融合后的全连接层
-        self.fc = nn.Linear(256 * 2, num_classes)  # 文本和图像特征拼接后是512维，映射到类别数
+        self.fc = nn.Linear(
+            256 * 2, num_classes
+        )  # 文本和图像特征拼接后是512维，映射到类别数
 
     def forward(self, input_ids, attention_mask, img):
         # 文本部分
@@ -99,7 +107,7 @@ class MultimodalModel(nn.Module):
         text_features = text_output.last_hidden_state.mean(dim=1)  # 计算平均值
         text_features = self.text_fc(text_features)  # 通过全连接层
         text_features = self.text_dropout(text_features)  # 应用Dropout
-        
+
         # 图像部分
         img_features = self.img_model(img)  # 通过ResNet50提取图像特征
         img_features = self.img_fc(img_features)  # 通过全连接层
@@ -111,26 +119,51 @@ class MultimodalModel(nn.Module):
         # 分类部分
         output = self.fc(combined_features)
         return output
-    
+
+
 class MultimodalModelvs(nn.Module):
     def __init__(self, text_model, img_model, num_classes):
-        super(MultimodalModelvs, self).__init__()
-        self.text_model = text_model
-        self.img_model = img_model
-        
-        # 定义多个 fc 层以支持不同的输入组合
-        self.fc_text_only = nn.Linear(768, num_classes)  # 仅文本
-        self.fc_img_only = nn.Linear(2048, num_classes)  # 仅图像
-        self.fc_combined = nn.Linear(768 + 2048, num_classes)  # 文本 + 图像
+        """
+        初始化多模态融合模型，支持不同的输入组合。
 
-    def forward(self, input_ids=None, attention_mask=None, img=None, use_text=True, use_image=True):
+        :param text_model: 文本模型（BERT）
+        :param img_model: 图像模型（ResNet）
+        :param num_classes: 输出类别数（对于三分类任务：positive, neutral, negative）
+        """
+        super(MultimodalModelvs, self).__init__()
+        self.text_model = text_model  # 文本模型（BERT）
+        self.img_model = img_model  # 图像模型（ResNet）
+
+        # 定义多个 fc 层以支持不同的输入组合
+        self.fc_text_only = nn.Linear(
+            768, num_classes
+        )  # 仅文本输入时使用的全连接层，输入维度为768（BERT输出维度），输出维度为类别数
+        self.fc_img_only = nn.Linear(
+            2048, num_classes
+        )  # 仅图像输入时使用的全连接层，输入维度为2048（ResNet输出维度），输出维度为类别数
+        self.fc_combined = nn.Linear(
+            768 + 2048, num_classes
+        )  # 文本和图像同时输入时使用的全连接层，输入维度为768+2048（BERT和ResNet输出维度之和），输出维度为类别数
+
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        img=None,
+        use_text=True,
+        use_image=True,
+    ):
         text_features = None
         img_features = None
-        
+
         # 仅使用文本数据
         if use_text and input_ids is not None and attention_mask is not None:
-            text_output = self.text_model(input_ids=input_ids, attention_mask=attention_mask)
-            text_features = text_output.last_hidden_state.mean(dim=1)  # 使用池化的文本特征
+            text_output = self.text_model(
+                input_ids=input_ids, attention_mask=attention_mask
+            )
+            text_features = text_output.last_hidden_state.mean(
+                dim=1
+            )  # 使用池化的文本特征
 
         # 仅使用图像数据
         if use_image and img is not None:
@@ -149,33 +182,46 @@ class MultimodalModelvs(nn.Module):
 
         return output
 
-import torch.nn.functional as F
-
 class MultimodalModelef(nn.Module):
     def __init__(self, text_model, img_model, num_classes):
+        """
+        初始化多模态融合模型。
+
+        :param text_model: 文本模型（BERT）
+        :param img_model: 图像模型（ConvNeXt-Base）
+        :param num_classes: 输出类别数（对于三分类任务：positive, neutral, negative）
+        """
         super(MultimodalModelef, self).__init__()
         self.text_model = text_model
         self.img_model = img_model
-        
+
         # 文本模型部分
-        self.text_fc = nn.Linear(768, 256)  # BERT 的输出是 768 维
-        
+        self.text_fc = nn.Linear(768, 256)  # BERT 的输出是 768 维，做一个映射到 256 维
+
         # 图像模型部分
-        self.img_fc = nn.Linear(1024, 256)  # ConvNeXt-Base 的输出是 1024 维
-        
+        self.img_fc = nn.Linear(
+            1024, 256
+        )  # ConvNeXt-Base 的输出是 1024 维，做一个映射到 256 维
+
         # 融合后的全连接层
-        self.fc = nn.Linear(256 * 2, num_classes)
+        self.fc = nn.Linear(
+            256 * 2, num_classes
+        )  # 文本和图像特征拼接后是 512 维，映射到类别数
 
     def forward(self, input_ids, attention_mask, img):
         # 文本部分
         text_output = self.text_model(input_ids, attention_mask=attention_mask)
         text_features = text_output.last_hidden_state.mean(dim=1)  # 平均池化
         text_features = self.text_fc(text_features)
-        
+
         # 图像部分
-        img_features = self.img_model(img)  # ConvNeXt 的输出形状是 (batch_size, 1024, H, W)
+        img_features = self.img_model(
+            img
+        )  # ConvNeXt 的输出形状是 (batch_size, 1024, H, W)
         img_features = F.adaptive_avg_pool2d(img_features, (1, 1))  # 全局平均池化
-        img_features = img_features.view(img_features.size(0), -1)  # 展平为 (batch_size, 1024)
+        img_features = img_features.view(
+            img_features.size(0), -1
+        )  # 展平为 (batch_size, 1024)
         img_features = self.img_fc(img_features)
 
         # 融合文本和图像特征

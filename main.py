@@ -16,7 +16,7 @@ EPOCHS = 15
 LEARNING_RATE = 1e-5
 MAX_LENGTH = 128
 NUM_CLASSES = 3
-PATIENCE = 3  
+PATIENCE = 5  
 
 # 数据路径们
 DATA_DIR = "/kaggle/working/dataset"
@@ -45,8 +45,14 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-# 加载数据
 def load_data():
+    """
+    加载训练数据并划分为训练集和验证集，同时创建对应的数据集加载器。
+    
+    返回:
+        train_loader (DataLoader): 训练集的数据加载器。
+        val_loader (DataLoader): 验证集的数据加载器。
+    """
     with open(TRAIN_FILE, 'r') as file:
         lines = file.readlines()[1:]
     
@@ -61,6 +67,12 @@ def load_data():
     return train_loader, val_loader
 
 def initialize_model():
+    """
+    初始化多模态模型，包括文本模型（BERT）和图像模型（ResNet50）。
+    
+    返回:
+        model (MultimodalModel): 初始化后的多模态模型。
+    """
     text_model = BertModel.from_pretrained("bert-base-uncased")
     img_model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
     img_model.fc = torch.nn.Identity()  
@@ -68,13 +80,23 @@ def initialize_model():
     return model
 
 def train(model, train_loader, val_loader, device):
+    """
+    训练多模态模型，并在每个epoch后评估验证集准确率。
+    
+    参数:
+        model (nn.Module): 要训练的多模态模型。
+        train_loader (DataLoader): 训练集的数据加载器。
+        val_loader (DataLoader): 验证集的数据加载器。
+        device (torch.device): 训练设备（CPU或GPU）。
+    """
+    # 将模型移动到指定设备上进行训练
     model = model.to(device)
     
-    # 使用L2正则化（weight_decay）来防止过拟合
+    # 使用交叉熵损失函数，并添加L2正则化（weight_decay）来防止过拟合
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
     
-    # 使用学习率调度器，每3个epoch调整一次学习率
+    # 使用学习率调度器，每3个epoch调整一次学习率，学习率衰减因子为0.1
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
     
     best_val_accuracy = 0
@@ -82,7 +104,7 @@ def train(model, train_loader, val_loader, device):
     train_accuracies = []
     val_accuracies = []
     
-    # 早停
+    # 早停计数器
     patience_counter = 0
     
     for epoch in range(EPOCHS):
@@ -101,7 +123,6 @@ def train(model, train_loader, val_loader, device):
             optimizer.step()
             running_loss += loss.item()
             
-            # 计算训练准确率
             _, predicted = torch.max(output, 1)
             total_train += label.size(0)
             correct_train += (predicted == label).sum().item()
@@ -124,7 +145,7 @@ def train(model, train_loader, val_loader, device):
         # 记录验证准确率到wandb
         wandb.log({"val/accuracy": val_accuracy})
 
-        # 早停判断
+        # 如果当前验证准确率高于最佳验证准确率，则更新最佳验证准确率并保存模型
         if val_accuracy > best_val_accuracy:
             best_val_accuracy = val_accuracy
             torch.save(model.state_dict(), "best_model.pth")
@@ -132,16 +153,28 @@ def train(model, train_loader, val_loader, device):
         else:
             patience_counter += 1
         
+        # 如果早停计数器达到阈值，则触发早停
         if patience_counter >= PATIENCE:
             print("Early stopping triggered, stopping training.")
             break
         
-        # 学习率调度器
+        # 更新学习率
         scheduler.step()
 
     wandb.finish()
 
 def evaluate(model, val_loader, device):
+    """
+    在验证集上评估模型的性能。
+    
+    参数:
+        model (nn.Module): 要评估的模型。
+        val_loader (DataLoader): 验证集的数据加载器。
+        device (torch.device): 评估设备（CPU或GPU）。
+    
+    返回:
+        accuracy (float): 模型在验证集上的准确率。
+    """
     model.eval()
     correct = 0
     total = 0
@@ -157,6 +190,16 @@ def evaluate(model, val_loader, device):
     return 100 * correct / total
 
 def predict(model, test_file, output_file, device):
+    """
+    使用训练好的模型对测试数据进行预测，并将预测结果保存到文件中。
+    
+    参数:
+        model (nn.Module): 训练好的多模态模型。
+        test_file (str): 测试数据文件路径。
+        output_file (str): 预测结果输出文件路径。
+        device (torch.device): 预测设备（CPU或GPU）。
+    """
+    # 加载最佳模型的权重
     model.load_state_dict(torch.load("best_model.pth", weights_only=True))
     model.eval()
     model = model.to(device)
@@ -199,6 +242,10 @@ def predict(model, test_file, output_file, device):
     print(f"Prediction completed and saved to {output_file}")
 
 def main():
+    """
+    主函数，用于执行整个模型训练和预测流程。
+    """
+    # 检查是否有可用的CUDA设备，如果有则使用CUDA，否则使用CPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_loader, val_loader = load_data()
     model = initialize_model()
