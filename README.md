@@ -31,7 +31,6 @@ pip install -r requirements.txt
 |-- process.ipynb		# 在kaggle运行代码的notebook记录
 |-- requirements.txt
 |-- README.md  
-|-- best_model.pth		# 训练保存的最佳模型
 ```
 
 ## Run 
@@ -57,12 +56,6 @@ DATA_DIR = "/kaggle/working/dataset"
 
 ```powershell
 python main.py
-```
-
-4. 如果想跳过训练步骤，直接使用已经训练好的模型 `best_model.pth` 进行测试，可以将主函数中的这一行代码注释掉：
-
-```python
-train(model, train_loader, val_loader, device)
 ```
 
 
