@@ -1,26 +1,18 @@
 # FinalLab_ai
 
-刘子玉  当代人工智能大作业
+当代人工智能大作业
 
 ## Setup
 
-此实验实现基于Python3.11.3。要运行代码，还需要安装以下库：还没修改
+此实验实现基于Python3.11.3。要运行代码，还需要安装以下库：
 
-- torch==1.10.0
-
-- torch-geometric==2.0.2
-
-- networkx==2.3
-
-- scipy==1.5.4
-
-- numpy==1.19.2
-
-- sklearn==0.0
-
-- matplotlib==3.1.1
-
-- pandas==1.1.5
+- torch==2.1.0
+- tqdm==4.66.1
+- transformers==4.30.0
+- torchvision==0.15.1
+- scikit-learn==1.3.0
+- Pillow==10.0.0
+- wandb==0.15.0
 
 也可以运行以下命令进行依赖安装：
 
@@ -77,12 +69,12 @@ train(model, train_loader, val_loader, device)
 ```
 
 
-## Attribution
+## Reference
 
-Parts of this code are based on the following repositories:还没修改
+Parts of this code are based on the following repositories:
 
-- [LINKX](https://github.com/CUAI/Non-Homophily-Large-Scale)
+- [Zhihu](https://zhuanlan.zhihu.com/p/402997033)
 
-- [PYGCN](https://github.com/tkipf/pygcn)
+- [Paper](https://ieeexplore.ieee.org/abstract/document/9736584)
 
-- [WRGAT](https://github.com/susheels/gnns-and-local-assortativity/tree/main/struc_sim)
+- [GloGNN](https://github.com/RecklessRonan/GloGNN/blob/master/readme.md)
