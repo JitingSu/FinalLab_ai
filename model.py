@@ -148,36 +148,30 @@ class MultimodalModelvs(nn.Module):
 
 class MultimodalModelef(nn.Module):
     def __init__(self, text_model, img_model, num_classes):
-        """
-        初始化多模态融合模型
-        :param text_model: 文本模型（BERT）
-        :param img_model: 图像模型（EfficientNet）
-        :param num_classes: 输出类别数（对于三分类任务：positive, neutral, negative）
-        """
         super(MultimodalModelef, self).__init__()
         self.text_model = text_model
         self.img_model = img_model
         
         # 文本模型部分
-        self.text_fc = nn.Linear(768, 256)  # BERT的输出是768维，做一个映射到256维
+        self.text_fc = nn.Linear(768, 256)
+        self.dropout1 = nn.Dropout(0.5)  # 添加 Dropout
         
         # 图像模型部分
-        # EfficientNet-B4 的输出是1792维，做一个映射到256维
-        self.img_fc = nn.Linear(1792, 256)  # 修改为适配 EfficientNet 的输出维度
+        self.img_fc = nn.Linear(1024, 256)  # ConvNeXt-Base 的输出是 1024 维
+        self.dropout2 = nn.Dropout(0.5)  # 添加 Dropout
         
         # 融合后的全连接层
-        self.fc = nn.Linear(256 * 2, num_classes)  # 文本和图像特征拼接后是512维，映射到类别数
+        self.fc = nn.Linear(256 * 2, num_classes)
 
     def forward(self, input_ids, attention_mask, img):
         # 文本部分
         text_output = self.text_model(input_ids, attention_mask=attention_mask)
-        # 使用 BERT 最后一个隐藏层的平均池化作为文本特征
-        text_features = text_output.last_hidden_state.mean(dim=1)  # 计算平均值
-        text_features = self.text_fc(text_features)  # 通过全连接层
+        text_features = text_output.last_hidden_state.mean(dim=1)
+        text_features = self.dropout1(self.text_fc(text_features))  # 添加 Dropout
         
         # 图像部分
-        img_features = self.img_model(img)  # 通过 EfficientNet 提取图像特征
-        img_features = self.img_fc(img_features)  # 通过全连接层
+        img_features = self.img_model(img)
+        img_features = self.dropout2(self.img_fc(img_features))  # 添加 Dropout
 
         # 融合文本和图像特征
         combined_features = torch.cat((text_features, img_features), dim=1)

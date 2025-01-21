@@ -7,7 +7,7 @@ from torchvision import transforms, models
 from sklearn.model_selection import train_test_split
 from model import MultimodalDataset, MultimodalModelef  
 from PIL import Image  
-from torchvision.models import efficientnet_b4, EfficientNet_B4_Weights  # 使用 EfficientNet
+from torchvision.models import convnext_base, ConvNeXt_Base_Weights
 import wandb
 
 # 参数设置
@@ -40,10 +40,12 @@ tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", clean_up_tokeniza
 transform = transforms.Compose([
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(30),
-    transforms.Resize((224, 224)),
+    transforms.RandomResizedCrop(224),  # 随机裁剪
+    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),  # 颜色抖动
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
+
 
 # 加载数据
 def load_data():
@@ -64,8 +66,8 @@ def initialize_model():
     # 文本模型
     text_model = BertModel.from_pretrained("bert-base-uncased")
     
-    # 图像模型（EfficientNet-B4）
-    img_model = efficientnet_b4(weights=EfficientNet_B4_Weights.DEFAULT)
+    # 图像模型（ConvNeXt-Base）
+    img_model = convnext_base(weights=ConvNeXt_Base_Weights.DEFAULT)
     img_model.classifier = torch.nn.Identity()  # 移除最后的分类层
     
     # 多模态模型

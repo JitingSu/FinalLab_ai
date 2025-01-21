@@ -157,7 +157,7 @@ def evaluate(model, val_loader, device):
     return 100 * correct / total
 
 def predict(model, test_file, output_file, device):
-    model.load_state_dict(torch.load("best_model.pth", weights_only=True))
+    # model.load_state_dict(torch.load("best_model.pth", weights_only=True))
     model.eval()
     model = model.to(device)
     
