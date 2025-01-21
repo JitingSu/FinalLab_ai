@@ -62,8 +62,7 @@ def load_data():
 
 def initialize_model():
     text_model = BertModel.from_pretrained("bert-base-uncased")
-    # img_model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
-    img_model = models.densenet121(weights=models.DenseNet121_Weights.DEFAULT) 
+    img_model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
     img_model.fc = torch.nn.Identity()  
     model = MultimodalModel(text_model, img_model, NUM_CLASSES)
     return model
