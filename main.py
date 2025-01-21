@@ -74,7 +74,7 @@ def train(model, train_loader, val_loader, device):
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
     
-    # 使用学习率调度器，每10个epoch调整一次学习率
+    # 使用学习率调度器，每5个epoch调整一次学习率
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
     
     best_val_accuracy = 0
@@ -124,17 +124,17 @@ def train(model, train_loader, val_loader, device):
         # 记录验证准确率到wandb
         wandb.log({"val/accuracy": val_accuracy})
 
-        # # 早停判断
-        # if val_accuracy > best_val_accuracy:
-        #     best_val_accuracy = val_accuracy
-        #     torch.save(model.state_dict(), "best_model.pth")
-        #     patience_counter = 0
-        # else:
-        #     patience_counter += 1
+        # 早停判断
+        if val_accuracy > best_val_accuracy:
+            best_val_accuracy = val_accuracy
+            torch.save(model.state_dict(), "best_model.pth")
+            patience_counter = 0
+        else:
+            patience_counter += 1
         
-        # if patience_counter >= PATIENCE:
-        #     print("Early stopping triggered, stopping training.")
-        #     break
+        if patience_counter >= PATIENCE:
+            print("Early stopping triggered, stopping training.")
+            break
         
         # 学习率调度器
         scheduler.step()
@@ -157,7 +157,7 @@ def evaluate(model, val_loader, device):
     return 100 * correct / total
 
 def predict(model, test_file, output_file, device):
-    # model.load_state_dict(torch.load("best_model.pth", weights_only=True))
+    model.load_state_dict(torch.load("best_model.pth", weights_only=True))
     model.eval()
     model = model.to(device)
     
