@@ -75,7 +75,7 @@ def train(model, train_loader, val_loader, device):
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
     
     # 使用学习率调度器，每5个epoch调整一次学习率
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
     
     best_val_accuracy = 0
     train_losses = []
